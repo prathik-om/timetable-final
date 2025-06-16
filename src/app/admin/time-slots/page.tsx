@@ -1,47 +1,53 @@
+import { Text, Title } from '@mantine/core';
+import { redirect } from 'next/navigation';
 import { createClient } from '@/utils/supabase/server';
 import TimeSlotsClientUI from './_components/TimeSlotsClientUI';
-import { Title, Text } from '@mantine/core';
-import { cookies } from 'next/headers';
+
+export const dynamic = 'force-dynamic';
 
 export default async function TimeSlotsPage() {
-  const cookieStore = cookies();
-  const supabase = await createClient(cookieStore);
-  
-  const { data: school, error: schoolError } = await supabase
+  const supabase = await createClient();
+
+  // Get the current user
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError || !user) {
+    redirect('/login');
+  }
+
+  // Get the user's school
+  const { data: school } = await supabase
     .from('schools')
     .select('id')
-    .limit(1)
+    .eq('user_id', user.id)
     .single();
 
-  if (schoolError || !school) {
-    return <div className="p-8">Error: No school found. Please create a school profile first.</div>;
+  if (!school) {
+    redirect('/admin/school-profile');
   }
-  
-  const schoolId = school.id;
 
-  // Fetch all time slots for the school, ordered by day and then start time
-  const { data: timeSlots, error } = await supabase
+  // Fetch existing time slots
+  const { data: timeSlots } = await supabase
     .from('time_slots')
     .select('*')
-    .eq('school_id', schoolId)
-    .order('day_of_week', { ascending: true })
-    .order('start_time', { ascending: true });
-
-  if (error) {
-    return <div className="p-8">Error: Could not load time slot data. ({error.message})</div>;
-  }
+    .eq('school_id', school.id)
+    .order('start_time');
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">
       <div className="mb-8">
-          <Title order={1} className="text-3xl font-bold tracking-tight">Manage Weekly Time Slots</Title>
-          <Text c="dimmed" mt="xs">Define the weekly template of periods, breaks, and lunches.</Text>
+        <Title order={1} className="text-3xl font-bold tracking-tight">
+          Manage Weekly Time Slots
+        </Title>
+        <Text c="dimmed" mt="xs">
+          Define the weekly template of periods, breaks, and lunches.
+        </Text>
       </div>
 
-      <TimeSlotsClientUI 
-        initialTimeSlots={timeSlots || []}
-        schoolId={schoolId}
-      />
+      <TimeSlotsClientUI initialTimeSlots={timeSlots || []} schoolId={school.id} />
     </div>
   );
-} 
+}

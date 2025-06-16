@@ -1,25 +1,25 @@
 'use client';
 
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { IconPencil, IconTrash } from '@tabler/icons-react';
+import { toast } from 'sonner';
 import {
-  Table,
-  Button,
-  Modal,
-  TextInput,
-  Group,
   ActionIcon,
-  rem,
+  Button,
   Card,
+  Group,
+  Modal,
+  rem,
   Stack,
+  Table,
   Text,
+  TextInput,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { useDisclosure } from '@mantine/hooks';
-import { IconPencil, IconTrash } from '@tabler/icons-react';
-import { toast } from 'sonner';
+import { Database } from '@/types/database.types';
 import { createClient } from '@/utils/supabase/client';
-import { Database } from '@/types/database';
-import { useState } from 'react';
 
 // Define the shape of a subject based on your database schema
 type Subject = Database['public']['Tables']['subjects']['Row'];
@@ -33,21 +33,15 @@ type SubjectsClientUIProps = {
   schoolId: string;
 };
 
-export default function SubjectsClientUI({
-  initialSubjects,
-  schoolId,
-}: SubjectsClientUIProps) {
+export default function SubjectsClientUI({ initialSubjects, schoolId }: SubjectsClientUIProps) {
   const router = useRouter();
   const supabase = createClient();
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
 
   // Hooks for controlling modals
-  const [modalOpened, { open: openModal, close: closeModal }] =
+  const [modalOpened, { open: openModal, close: closeModal }] = useDisclosure(false);
+  const [deleteModalOpened, { open: openDeleteModal, close: closeDeleteModal }] =
     useDisclosure(false);
-  const [
-    deleteModalOpened,
-    { open: openDeleteModal, close: closeDeleteModal },
-  ] = useDisclosure(false);
 
   // Form hook for create/edit functionality
   const form = useForm<SubjectFormData>({
@@ -57,9 +51,9 @@ export default function SubjectsClientUI({
       subject_type: '',
     },
     validate: {
-      name: (value) => (value.trim().length > 0 ? null : 'Subject name is required'),
-      code: (value) => (value.trim().length > 0 ? null : 'Subject code is required'),
-      subject_type: (value) => (value.trim().length > 0 ? null : 'Type is required'),
+      name: (value) => (value && value.trim().length > 0 ? null : 'Subject name is required'),
+      code: (value) => (value && value.trim().length > 0 ? null : 'Subject code is required'),
+      subject_type: (value) => (value && value.trim().length > 0 ? null : 'Type is required'),
     },
   });
 
@@ -114,10 +108,7 @@ export default function SubjectsClientUI({
     const subjectData = { ...values, school_id: schoolId };
 
     const promise = selectedSubject
-      ? supabase
-          .from('subjects')
-          .update(subjectData)
-          .match({ id: selectedSubject.id })
+      ? supabase.from('subjects').update(subjectData).match({ id: selectedSubject.id })
       : supabase.from('subjects').insert(subjectData);
 
     toast.promise(
@@ -145,18 +136,10 @@ export default function SubjectsClientUI({
       <Table.Td>{subject.subject_type}</Table.Td>
       <Table.Td>
         <Group gap="xs" justify="flex-end">
-          <ActionIcon
-            variant="subtle"
-            color="gray"
-            onClick={() => handleEdit(subject)}
-          >
+          <ActionIcon variant="subtle" color="gray" onClick={() => handleEdit(subject)}>
             <IconPencil style={{ width: rem(16), height: rem(16) }} />
           </ActionIcon>
-          <ActionIcon
-            variant="subtle"
-            color="red"
-            onClick={() => handleDelete(subject)}
-          >
+          <ActionIcon variant="subtle" color="red" onClick={() => handleDelete(subject)}>
             <IconTrash style={{ width: rem(16), height: rem(16) }} />
           </ActionIcon>
         </Group>
@@ -226,9 +209,7 @@ export default function SubjectsClientUI({
               <Button variant="default" onClick={closeModal}>
                 Cancel
               </Button>
-              <Button type="submit">
-                {selectedSubject ? 'Update Subject' : 'Create Subject'}
-              </Button>
+              <Button type="submit">{selectedSubject ? 'Update Subject' : 'Create Subject'}</Button>
             </Group>
           </Stack>
         </form>
@@ -242,8 +223,8 @@ export default function SubjectsClientUI({
         centered
       >
         <Text>
-          Are you sure you want to delete the subject "{selectedSubject?.name}"?
-          This action cannot be undone.
+          Are you sure you want to delete the subject "{selectedSubject?.name}"? This action cannot
+          be undone.
         </Text>
         <Group justify="flex-end" mt="lg">
           <Button variant="default" onClick={closeDeleteModal}>
@@ -256,4 +237,4 @@ export default function SubjectsClientUI({
       </Modal>
     </>
   );
-} 
+}

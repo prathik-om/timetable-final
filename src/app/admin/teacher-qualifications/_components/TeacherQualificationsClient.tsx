@@ -1,9 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { createClient } from '@/utils/supabase/client';
 import { Button, Card, Group, Select, Stack, Text, Title } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
+import { createClient } from '@/utils/supabase/client';
 
 interface Teacher {
   id: string;
@@ -29,7 +29,12 @@ interface Props {
   schoolId: string;
 }
 
-export default function TeacherQualificationsClient({ teachers, subjects, qualifications, schoolId }: Props) {
+export default function TeacherQualificationsClient({
+  teachers,
+  subjects,
+  qualifications,
+  schoolId,
+}: Props) {
   const [selectedTeacher, setSelectedTeacher] = useState<string | null>(null);
   const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -47,7 +52,7 @@ export default function TeacherQualificationsClient({ teachers, subjects, qualif
 
     // Check if qualification already exists
     const existingQualification = qualifications.find(
-      q => q.teacher_id === selectedTeacher && q.subject_id === selectedSubject
+      (q) => q.teacher_id === selectedTeacher && q.subject_id === selectedSubject
     );
 
     if (existingQualification) {
@@ -62,13 +67,11 @@ export default function TeacherQualificationsClient({ teachers, subjects, qualif
     setIsLoading(true);
 
     try {
-      const { error } = await supabase
-        .from('teacher_qualifications')
-        .insert({
-          teacher_id: selectedTeacher,
-          subject_id: selectedSubject,
-          school_id: schoolId,
-        });
+      const { error } = await supabase.from('teacher_qualifications').insert({
+        teacher_id: selectedTeacher,
+        subject_id: selectedSubject,
+        school_id: schoolId,
+      });
 
       if (error) throw error;
 
@@ -127,15 +130,24 @@ export default function TeacherQualificationsClient({ teachers, subjects, qualif
     }
   };
 
+  // Helper function to get human-readable names
+  const getTeacherName = (teacherId: string) =>
+    teachers.find((t) => t.id === teacherId)?.first_name + ' ' + teachers.find((t) => t.id === teacherId)?.last_name || 'Unknown Teacher';
+
+  const getSubjectName = (subjectId: string) =>
+    subjects.find((s) => s.id === subjectId)?.name || 'Unknown Subject';
+
   return (
     <div className="space-y-6">
       <Card withBorder>
-        <Title order={2} mb="md">Add New Qualification</Title>
+        <Title order={2} mb="md">
+          Add New Qualification
+        </Title>
         <Stack>
           <Select
             label="Teacher"
             placeholder="Select a teacher"
-            data={teachers.map(teacher => ({
+            data={teachers.map((teacher) => ({
               value: teacher.id,
               label: `${teacher.first_name} ${teacher.last_name}`,
             }))}
@@ -145,7 +157,7 @@ export default function TeacherQualificationsClient({ teachers, subjects, qualif
           <Select
             label="Subject"
             placeholder="Select a subject"
-            data={subjects.map(subject => ({
+            data={subjects.map((subject) => ({
               value: subject.id,
               label: subject.name,
             }))}
@@ -163,12 +175,14 @@ export default function TeacherQualificationsClient({ teachers, subjects, qualif
       </Card>
 
       <Card withBorder>
-        <Title order={2} mb="md">Current Qualifications</Title>
+        <Title order={2} mb="md">
+          Current Qualifications
+        </Title>
         <Stack>
-          {teachers.map(teacher => {
-            const teacherQualifications = qualifications.filter(q => q.teacher_id === teacher.id);
-            const qualifiedSubjects = teacherQualifications.map(q => {
-              const subject = subjects.find(s => s.id === q.subject_id);
+          {teachers.map((teacher) => {
+            const teacherQualifications = qualifications.filter((q) => q.teacher_id === teacher.id);
+            const qualifiedSubjects = teacherQualifications.map((q) => {
+              const subject = subjects.find((s) => s.id === q.subject_id);
               return { id: q.id, name: subject?.name || 'Unknown Subject' };
             });
 
@@ -179,7 +193,7 @@ export default function TeacherQualificationsClient({ teachers, subjects, qualif
                 </Text>
                 {qualifiedSubjects.length > 0 ? (
                   <Group>
-                    {qualifiedSubjects.map(subject => (
+                    {qualifiedSubjects.map((subject) => (
                       <Button
                         key={subject.id}
                         variant="light"
@@ -202,4 +216,4 @@ export default function TeacherQualificationsClient({ teachers, subjects, qualif
       </Card>
     </div>
   );
-} 
+}

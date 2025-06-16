@@ -1,15 +1,15 @@
 'use client';
 
-import { TextInput, Button, Card, Container, Title } from '@mantine/core';
+import { useRouter } from 'next/navigation';
+import { toast, Toaster } from 'sonner';
+import { Button, Card, Container, TextInput, Title } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { createClient } from '@/utils/supabase/client';
-import { Toaster, toast } from 'sonner';
-import { useRouter } from 'next/navigation';
 
 type School = {
   id: string;
   name: string;
-  created_at: string;
+  created_at: string | null;
 };
 
 type Props = {
@@ -34,28 +34,24 @@ export default function SchoolProfileClient({ initialSchool, userId }: Props) {
     try {
       if (initialSchool) {
         // Update existing school
-        const { error } = await supabase
-          .from('schools')
-          .update(values)
-          .eq('id', initialSchool.id);
+        const { error } = await supabase.from('schools').update(values).eq('id', initialSchool.id);
 
         if (error) throw error;
         toast.success('Profile updated!');
+        router.refresh();
       } else {
         // Create new school
         const { error } = await supabase
           .from('schools')
-          .insert(values);
+          .insert([{ ...values, user_id: userId }]);
 
         if (error) {
           console.error('Error creating school:', error);
           throw error;
         }
         toast.success('Profile created!');
+        router.push('/admin/setup/academic-year');
       }
-
-      // Refresh the page to get updated data
-      router.refresh();
     } catch (error) {
       console.error('Error in handleSubmit:', error);
       toast.error(error instanceof Error ? error.message : 'Failed to save profile');
@@ -78,4 +74,4 @@ export default function SchoolProfileClient({ initialSchool, userId }: Props) {
       </Card>
     </Container>
   );
-} 
+}

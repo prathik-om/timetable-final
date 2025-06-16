@@ -2,24 +2,24 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@/utils/supabase/client';
-import { Database } from '@/types/database';
-import { toast } from 'sonner';
 import { IconPencil, IconTrash } from '@tabler/icons-react';
+import { toast } from 'sonner';
 import {
-  Card,
   Button,
-  Table,
+  Card,
+  Checkbox,
+  Group,
   Modal,
   Select,
-  Checkbox,
-  TextInput,
-  Group,
-  Text,
   Stack,
+  Table,
+  Text,
+  TextInput,
 } from '@mantine/core';
 import { TimeInput } from '@mantine/dates';
 import { useForm } from '@mantine/form';
+import { Database } from '@/types/database.types';
+import { createClient } from '@/utils/supabase/client';
 
 type TimeSlot = Database['public']['Tables']['time_slots']['Row'];
 
@@ -38,10 +38,7 @@ const DAYS_OF_WEEK = [
   { value: '7', label: 'Sunday' },
 ];
 
-export default function TimeSlotsClientUI({
-  initialTimeSlots,
-  schoolId,
-}: TimeSlotsClientUIProps) {
+export default function TimeSlotsClientUI({ initialTimeSlots, schoolId }: TimeSlotsClientUIProps) {
   const router = useRouter();
   const supabase = createClient();
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<TimeSlot | null>(null);
@@ -62,7 +59,9 @@ export default function TimeSlotsClientUI({
       start_time: (value) => (!value ? 'Start time is required' : null),
       end_time: (value) => (!value ? 'End time is required' : null),
       slot_name: (value, values) =>
-        !values.is_teaching_period && !value ? 'Slot name is required for non-teaching periods' : null,
+        !values.is_teaching_period && !value
+          ? 'Slot name is required for non-teaching periods'
+          : null,
     },
   });
 
@@ -74,10 +73,7 @@ export default function TimeSlotsClientUI({
     };
 
     const promise = selectedTimeSlot
-      ? supabase
-          .from('time_slots')
-          .update(timeSlotData)
-          .eq('id', selectedTimeSlot.id)
+      ? supabase.from('time_slots').update(timeSlotData).eq('id', selectedTimeSlot.id)
       : supabase.from('time_slots').insert(timeSlotData);
 
     toast.promise(
@@ -122,14 +118,18 @@ export default function TimeSlotsClientUI({
   };
 
   // Group time slots by day
-  const timeSlotsByDay = initialTimeSlots.reduce((acc, slot) => {
-    const day = DAYS_OF_WEEK.find((d) => d.value === slot.day_of_week.toString())?.label || 'Unknown';
-    if (!acc[day]) {
-      acc[day] = [];
-    }
-    acc[day].push(slot);
-    return acc;
-  }, {} as Record<string, TimeSlot[]>);
+  const timeSlotsByDay = initialTimeSlots.reduce(
+    (acc, slot) => {
+      const day =
+        DAYS_OF_WEEK.find((d) => d.value === slot.day_of_week.toString())?.label || 'Unknown';
+      if (!acc[day]) {
+        acc[day] = [];
+      }
+      acc[day].push(slot);
+      return acc;
+    },
+    {} as Record<string, TimeSlot[]>
+  );
 
   return (
     <Stack>
@@ -170,7 +170,7 @@ export default function TimeSlotsClientUI({
                               day_of_week: slot.day_of_week.toString(),
                               start_time: slot.start_time,
                               end_time: slot.end_time,
-                              is_teaching_period: slot.is_teaching_period,
+                              is_teaching_period: slot.is_teaching_period ?? undefined,
                               slot_name: slot.slot_name || '',
                             });
                             setIsModalOpen(true);
@@ -260,4 +260,4 @@ export default function TimeSlotsClientUI({
       </Modal>
     </Stack>
   );
-} 
+}

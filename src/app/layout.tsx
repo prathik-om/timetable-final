@@ -1,20 +1,17 @@
 import '@mantine/core/styles.css';
 import '@mantine/notifications/styles.css';
+
 import React from 'react';
-import { MantineProvider, ColorSchemeScript } from '@mantine/core';
+import { ColorSchemeScript, MantineProvider } from '@mantine/core';
 import { Notifications } from '@mantine/notifications';
 import { theme } from '../../theme';
 
 export const metadata = {
   title: 'Timetable App',
   description: 'A modern timetable management system',
-}
+};
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <head>
@@ -32,5 +29,5 @@ export default function RootLayout({
         </MantineProvider>
       </body>
     </html>
-  )
+  );
 }

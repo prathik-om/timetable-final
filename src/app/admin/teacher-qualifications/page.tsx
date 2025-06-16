@@ -1,6 +1,6 @@
-import { createClient } from '@/utils/supabase/server';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
+import { createClient } from '@/utils/supabase/server';
 import TeacherQualificationsClient from './_components/TeacherQualificationsClient';
 
 export default async function TeacherQualificationsPage() {
@@ -8,16 +8,20 @@ export default async function TeacherQualificationsPage() {
   const supabase = await createClient();
 
   // Get the current user
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
 
   if (userError || !user) {
     redirect('/login');
   }
 
-  // Get the first school (since we don't have user_id anymore)
+  // Get the user's school
   const { data: schoolData, error: schoolError } = await supabase
     .from('schools')
     .select('id')
+    .eq('user_id', user.id)
     .limit(1)
     .single();
 
@@ -26,27 +30,15 @@ export default async function TeacherQualificationsPage() {
   }
 
   // Fetch all required data
-  const [
-    { data: teachers },
-    { data: subjects },
-    { data: qualifications }
-  ] = await Promise.all([
+  const [{ data: teachers }, { data: subjects }, { data: qualifications }] = await Promise.all([
     // Fetch teachers
-    supabase
-      .from('teachers')
-      .select('*')
-      .eq('school_id', schoolData.id),
+    supabase.from('teachers').select('*').eq('user_id', user.id),
 
     // Fetch subjects
-    supabase
-      .from('subjects')
-      .select('*'),
+    supabase.from('subjects').select('*').eq('user_id', user.id),
 
     // Fetch teacher qualifications
-    supabase
-      .from('teacher_qualifications')
-      .select('*')
-      .eq('school_id', schoolData.id)
+    supabase.from('teacher_qualifications').select('*').eq('user_id', user.id),
   ]);
 
   if (!teachers || !subjects || !qualifications) {
@@ -64,4 +56,4 @@ export default async function TeacherQualificationsPage() {
       />
     </div>
   );
-} 
+}

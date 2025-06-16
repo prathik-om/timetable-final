@@ -1,7 +1,7 @@
 'use client';
 
-import { Container, Title, Text, Button } from '@mantine/core';
 import { useRouter } from 'next/navigation';
+import { Button, Container, Text, Title } from '@mantine/core';
 
 export default function UnauthorizedPage() {
   const router = useRouter();
@@ -12,14 +12,12 @@ export default function UnauthorizedPage() {
         Access Denied
       </Title>
       <Text ta="center" mb="xl">
-        You don't have permission to access this page. Please contact your school administrator if you believe this is an error.
+        You don't have permission to access this page. Please contact your school administrator if
+        you believe this is an error.
       </Text>
-      <Button
-        fullWidth
-        onClick={() => router.push('/')}
-      >
+      <Button fullWidth onClick={() => router.push('/')}>
         Return to Home
       </Button>
     </Container>
   );
-} 
+}

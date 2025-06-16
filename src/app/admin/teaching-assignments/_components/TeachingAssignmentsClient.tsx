@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useMemo } from 'react';
-import { createClient } from '@/utils/supabase/client';
+import { useMemo, useState } from 'react';
+import { IconAlertCircle } from '@tabler/icons-react';
 import { Alert, Button, Card, Group, Select, Stack, Text, Title } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import { IconAlertCircle } from '@tabler/icons-react';
+import { createClient } from '@/utils/supabase/client';
 
 interface Term {
   id: string;
@@ -79,13 +79,13 @@ interface Props {
   dataValidation: DataValidation;
 }
 
-export default function TeachingAssignmentsClient({ 
-  assignments, 
-  classOfferings, 
-  teachers, 
-  qualifications, 
+export default function TeachingAssignmentsClient({
+  assignments,
+  classOfferings,
+  teachers,
+  qualifications,
   schoolId,
-  dataValidation 
+  dataValidation,
 }: Props) {
   const [selectedOffering, setSelectedOffering] = useState<string | null>(null);
   const [selectedTeacher, setSelectedTeacher] = useState<string | null>(null);
@@ -94,23 +94,22 @@ export default function TeachingAssignmentsClient({
 
   // Filter out class offerings that already have a teacher assigned
   const availableClassOfferings = classOfferings.filter(
-    offering => !assignments.some(assignment => assignment.class_offering.id === offering.id)
+    (offering) => !assignments.some((assignment) => assignment.class_offering.id === offering.id)
   );
 
   // Get the selected class offering's subject
   const selectedOfferingData = useMemo(() => {
     if (!selectedOffering) return null;
-    return classOfferings.find(o => o.id === selectedOffering);
+    return classOfferings.find((o) => o.id === selectedOffering);
   }, [selectedOffering, classOfferings]);
 
   // Filter teachers based on qualifications for the selected subject
   const qualifiedTeachers = useMemo(() => {
     if (!selectedOfferingData) return teachers;
 
-    return teachers.filter(teacher => 
-      qualifications.some(q => 
-        q.teacher_id === teacher.id && 
-        q.subject_id === selectedOfferingData.subject.id
+    return teachers.filter((teacher) =>
+      qualifications.some(
+        (q) => q.teacher_id === teacher.id && q.subject_id === selectedOfferingData.subject.id
       )
     );
   }, [selectedOfferingData, teachers, qualifications]);
@@ -132,9 +131,7 @@ export default function TeachingAssignmentsClient({
     }
 
     // Check if class offering already has a teacher
-    const existingAssignment = assignments.find(
-      a => a.class_offering.id === selectedOffering
-    );
+    const existingAssignment = assignments.find((a) => a.class_offering.id === selectedOffering);
 
     if (existingAssignment) {
       notifications.show({
@@ -146,7 +143,7 @@ export default function TeachingAssignmentsClient({
     }
 
     // Get the class offering to check subject
-    const offering = classOfferings.find(o => o.id === selectedOffering);
+    const offering = classOfferings.find((o) => o.id === selectedOffering);
     if (!offering) {
       notifications.show({
         title: 'Error',
@@ -158,7 +155,7 @@ export default function TeachingAssignmentsClient({
 
     // Check if teacher is qualified to teach this subject
     const isQualified = qualifications.some(
-      q => q.teacher_id === selectedTeacher && q.subject_id === offering.subject.id
+      (q) => q.teacher_id === selectedTeacher && q.subject_id === offering.subject.id
     );
 
     if (!isQualified) {
@@ -173,16 +170,15 @@ export default function TeachingAssignmentsClient({
     setIsLoading(true);
 
     try {
-      const { error } = await supabase
-        .from('teaching_assignments')
-        .insert({
-          class_offering_id: selectedOffering,
-          teacher_id: selectedTeacher,
-          school_id: schoolId,
-        });
+      const { error } = await supabase.from('teaching_assignments').insert({
+        class_offering_id: selectedOffering,
+        teacher_id: selectedTeacher,
+        school_id: schoolId,
+      });
 
       if (error) {
-        if (error.code === '23505') { // Unique violation
+        if (error.code === '23505') {
+          // Unique violation
           notifications.show({
             title: 'Error',
             message: 'This class already has a teacher assigned',
@@ -222,10 +218,7 @@ export default function TeachingAssignmentsClient({
     setIsLoading(true);
 
     try {
-      const { error } = await supabase
-        .from('teaching_assignments')
-        .delete()
-        .eq('id', assignmentId);
+      const { error } = await supabase.from('teaching_assignments').delete().eq('id', assignmentId);
 
       if (error) throw error;
 
@@ -250,22 +243,25 @@ export default function TeachingAssignmentsClient({
   };
 
   // Group assignments by term
-  const assignmentsByTerm = assignments.reduce((acc, assignment) => {
-    if (!assignment.class_offering?.term) return acc;
-    
-    const termId = assignment.class_offering.term.id;
-    if (!acc[termId]) {
-      acc[termId] = {
-        term: assignment.class_offering.term,
-        assignments: [],
-      };
-    }
-    acc[termId].assignments.push(assignment);
-    return acc;
-  }, {} as Record<string, { term: Term; assignments: Assignment[] }>);
+  const assignmentsByTerm = assignments.reduce(
+    (acc, assignment) => {
+      if (!assignment.class_offering?.term) return acc;
+
+      const termId = assignment.class_offering.term.id;
+      if (!acc[termId]) {
+        acc[termId] = {
+          term: assignment.class_offering.term,
+          assignments: [],
+        };
+      }
+      acc[termId].assignments.push(assignment);
+      return acc;
+    },
+    {} as Record<string, { term: Term; assignments: Assignment[] }>
+  );
 
   // Check for data inconsistencies
-  const hasDataIssues = 
+  const hasDataIssues =
     dataValidation.assignments.withValidClassOffering < dataValidation.assignments.total ||
     dataValidation.assignments.withValidTeacher < dataValidation.assignments.total ||
     dataValidation.classOfferings.withValidTerm < dataValidation.classOfferings.total ||
@@ -275,23 +271,26 @@ export default function TeachingAssignmentsClient({
   return (
     <div className="space-y-6">
       {hasDataIssues && (
-        <Alert 
-          icon={<IconAlertCircle size="1rem" />} 
-          title="Data Inconsistency Detected" 
+        <Alert
+          icon={<IconAlertCircle size="1rem" />}
+          title="Data Inconsistency Detected"
           color="yellow"
           variant="light"
         >
-          Some data is missing or incomplete. This may affect the display of assignments. Please contact support if this persists.
+          Some data is missing or incomplete. This may affect the display of assignments. Please
+          contact support if this persists.
         </Alert>
       )}
 
       <Card withBorder>
-        <Title order={2} mb="md">Add New Assignment</Title>
+        <Title order={2} mb="md">
+          Add New Assignment
+        </Title>
         <Stack>
           <Select
             label="Class Offering"
             placeholder="Select a class offering"
-            data={availableClassOfferings.map(offering => ({
+            data={availableClassOfferings.map((offering) => ({
               value: offering.id,
               label: `Grade ${offering.class_section.grade_level} ${offering.class_section.name} - ${offering.subject.name} (${offering.term.name})`,
             }))}
@@ -300,23 +299,27 @@ export default function TeachingAssignmentsClient({
             disabled={availableClassOfferings.length === 0}
           />
           {availableClassOfferings.length === 0 && (
-            <Text c="dimmed" size="sm">All classes already have teachers assigned</Text>
+            <Text c="dimmed" size="sm">
+              All classes already have teachers assigned
+            </Text>
           )}
           <Select
             label="Teacher"
             placeholder="Select a teacher"
-            data={qualifiedTeachers.map(teacher => ({
+            data={qualifiedTeachers.map((teacher) => ({
               value: teacher.id,
               label: `${teacher.first_name} ${teacher.last_name}`,
             }))}
             value={selectedTeacher}
             onChange={setSelectedTeacher}
             disabled={!selectedOffering}
-            description={selectedOffering && qualifiedTeachers.length === 0 ? 
-              "No qualified teachers found for this subject" : 
-              selectedOffering ? 
-              `Showing ${qualifiedTeachers.length} qualified teacher(s)` : 
-              "Select a class offering first"}
+            description={
+              selectedOffering && qualifiedTeachers.length === 0
+                ? 'No qualified teachers found for this subject'
+                : selectedOffering
+                  ? `Showing ${qualifiedTeachers.length} qualified teacher(s)`
+                  : 'Select a class offering first'
+            }
           />
           <Button
             onClick={handleAddAssignment}
@@ -329,7 +332,9 @@ export default function TeachingAssignmentsClient({
       </Card>
 
       <Card withBorder>
-        <Title order={2} mb="md">Current Assignments</Title>
+        <Title order={2} mb="md">
+          Current Assignments
+        </Title>
         <Stack>
           {Object.values(assignmentsByTerm).map(({ term, assignments }) => (
             <div key={term.id} className="border-b pb-4 last:border-b-0">
@@ -338,11 +343,13 @@ export default function TeachingAssignmentsClient({
               </Text>
               {assignments.length > 0 ? (
                 <Stack>
-                  {assignments.map(assignment => (
+                  {assignments.map((assignment) => (
                     <Group key={assignment.id} justify="space-between">
                       <div>
                         <Text fw={500}>
-                          Grade {assignment.class_offering.class_section.grade_level} {assignment.class_offering.class_section.name} - {assignment.class_offering.subject.name}
+                          Grade {assignment.class_offering.class_section.grade_level}{' '}
+                          {assignment.class_offering.class_section.name} -{' '}
+                          {assignment.class_offering.subject.name}
                         </Text>
                         <Text size="sm" c="dimmed">
                           Teacher: {assignment.teacher.first_name} {assignment.teacher.last_name}
@@ -372,4 +379,4 @@ export default function TeachingAssignmentsClient({
       </Card>
     </div>
   );
-} 
+}

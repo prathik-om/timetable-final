@@ -2,21 +2,12 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@/utils/supabase/client';
-import { Database } from '@/types/database';
-import { toast } from 'sonner';
 import { IconPencil, IconTrash } from '@tabler/icons-react';
-import {
-  Card,
-  Button,
-  Table,
-  Modal,
-  Select,
-  Group,
-  Text,
-  Stack,
-} from '@mantine/core';
+import { toast } from 'sonner';
+import { Button, Card, Group, Modal, Select, Stack, Table, Text } from '@mantine/core';
 import { useForm } from '@mantine/form';
+import { Database } from '@/types/database.types';
+import { createClient } from '@/utils/supabase/client';
 
 type TeachingAssignment = Database['public']['Tables']['teaching_assignments']['Row'];
 type ClassOffering = Database['public']['Tables']['class_offerings']['Row'];
@@ -65,32 +56,34 @@ export default function AssignmentsClientUI({
   });
 
   // Helper function to get qualified teachers for a subject
-  const getQualifiedTeachers = (subjectId: number) => {
+  const getQualifiedTeachers = (subjectId: string) => {
     const qualifiedTeacherIds = teacherQualifications
-      .filter(q => q.subject_id === subjectId)
-      .map(q => q.teacher_id);
-    
-    return teachers.filter(teacher => qualifiedTeacherIds.includes(teacher.id));
+      .filter((q) => q.subject_id === subjectId)
+      .map((q) => q.teacher_id);
+
+    return teachers.filter((teacher) => qualifiedTeacherIds.includes(teacher.id));
   };
 
   // Helper function to format class offering display
-  const formatClassOffering = (offering: ClassOffering & {
-    term: Term;
-    class_section: ClassSection;
-    subject: Subject;
-  }) => {
+  const formatClassOffering = (
+    offering: ClassOffering & {
+      term: Term;
+      class_section: ClassSection;
+      subject: Subject;
+    }
+  ) => {
     return `${offering.class_section.name}: ${offering.subject.name} (${offering.term.name})`;
   };
 
   // Helper function to get teacher name
   const getTeacherName = (teacherId: string) => {
-    const teacher = teachers.find(t => t.id === teacherId);
+    const teacher = teachers.find((t) => t.id === teacherId);
     return teacher ? `${teacher.first_name} ${teacher.last_name}` : 'Unknown Teacher';
   };
 
   // Helper function to get class offering details
   const getClassOfferingDetails = (offeringId: string) => {
-    return classOfferings.find(o => o.id === offeringId);
+    return classOfferings.find((o) => o.id === offeringId);
   };
 
   const handleSubmit = async (values: typeof form.values) => {
@@ -136,7 +129,7 @@ export default function AssignmentsClientUI({
 
     try {
       const { error } = await supabase.from('teaching_assignments').delete().eq('id', deleteId);
-      
+
       if (error) {
         console.error('Supabase error:', error);
         throw new Error(error.message);
@@ -230,7 +223,7 @@ export default function AssignmentsClientUI({
             <Select
               label="Class Offering"
               placeholder="Select a class offering"
-              data={classOfferings.map(offering => ({
+              data={classOfferings.map((offering) => ({
                 value: offering.id,
                 label: formatClassOffering(offering),
               }))}
@@ -239,7 +232,7 @@ export default function AssignmentsClientUI({
                 form.setFieldValue('class_offering_id', value || '');
                 form.setFieldValue('teacher_id', '');
                 setSelectedOffering(
-                  value ? classOfferings.find(o => o.id === value) || null : null
+                  value ? classOfferings.find((o) => o.id === value) || null : null
                 );
               }}
             />
@@ -248,7 +241,7 @@ export default function AssignmentsClientUI({
               placeholder="Select a teacher"
               data={
                 selectedOffering
-                  ? getQualifiedTeachers(selectedOffering.subject_id).map(teacher => ({
+                  ? getQualifiedTeachers(selectedOffering.subject_id).map((teacher) => ({
                       value: teacher.id,
                       label: `${teacher.first_name} ${teacher.last_name}`,
                     }))
@@ -281,4 +274,4 @@ export default function AssignmentsClientUI({
       </Modal>
     </Stack>
   );
-} 
+}

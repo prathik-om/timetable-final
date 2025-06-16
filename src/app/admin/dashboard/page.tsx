@@ -1,10 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { createClient } from '@/utils/supabase/client';
-import { Container, Title, SimpleGrid, Card, Text, Button, Group, Stack } from '@mantine/core';
 import { useRouter } from 'next/navigation';
-import { IconSchool, IconUsers, IconBook, IconDoor } from '@tabler/icons-react';
+import { IconBook, IconDoor, IconSchool, IconUsers } from '@tabler/icons-react';
+import { Button, Card, Container, Group, SimpleGrid, Stack, Text, Title } from '@mantine/core';
+import { createClient } from '@/utils/supabase/client';
 
 type School = {
   id: string;
@@ -19,7 +19,9 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     const fetchSchool = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) {
         router.push('/login');
         return;
@@ -75,8 +77,8 @@ export default function AdminDashboard() {
 
   return (
     <Container size="lg" py="xl">
-      <Stack spacing="xl">
-        <Group position="apart" align="center">
+      <Stack gap="xl">
+        <Group justify="space-between" align="center">
           <div>
             <Title order={1}>Admin Dashboard</Title>
             {school && (
@@ -99,18 +101,14 @@ export default function AdminDashboard() {
         <SimpleGrid cols={2} spacing="lg">
           {adminFeatures.map((feature) => (
             <Card key={feature.path} shadow="sm" p="lg" radius="md" withBorder>
-              <Group position="apart" mb="md">
+              <Group justify="space-between" mb="md">
                 {feature.icon}
                 <Title order={3}>{feature.title}</Title>
               </Group>
               <Text size="sm" color="dimmed" mb="xl">
                 {feature.description}
               </Text>
-              <Button
-                variant="light"
-                fullWidth
-                onClick={() => router.push(feature.path)}
-              >
+              <Button variant="light" fullWidth onClick={() => router.push(feature.path)}>
                 Manage
               </Button>
             </Card>
@@ -119,4 +117,4 @@ export default function AdminDashboard() {
       </Stack>
     </Container>
   );
-} 
+}

@@ -1,23 +1,23 @@
 'use client';
 
 import { useState } from 'react';
+import { IconPencil, IconTrash } from '@tabler/icons-react';
+import { toast } from 'sonner';
 import {
-  Button,
-  Modal,
-  Table,
-  TextInput,
-  Group,
   ActionIcon,
+  Button,
+  Group,
+  Modal,
   rem,
   Stack,
+  Table,
   Text,
+  TextInput,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { useDisclosure } from '@mantine/hooks';
-import { toast } from 'sonner';
-import { IconPencil, IconTrash } from '@tabler/icons-react';
+import { Database } from '@/types/database.types';
 import { createClient } from '@/utils/supabase/client';
-import { Database } from '@/types/database';
 
 type Teacher = Database['public']['Tables']['teachers']['Row'];
 
@@ -26,18 +26,13 @@ type TeachersClientProps = {
   schoolId: string;
 };
 
-export default function TeachersClient({
-  initialTeachers,
-  schoolId,
-}: TeachersClientProps) {
+export default function TeachersClient({ initialTeachers, schoolId }: TeachersClientProps) {
   const supabase = createClient();
   const [teachers, setTeachers] = useState(initialTeachers);
   const [addEditModalOpened, { open: openAddEditModal, close: closeAddEditModal }] =
     useDisclosure(false);
-  const [
-    deleteModalOpened,
-    { open: openDeleteModal, close: closeDeleteModal },
-  ] = useDisclosure(false);
+  const [deleteModalOpened, { open: openDeleteModal, close: closeDeleteModal }] =
+    useDisclosure(false);
   const [selectedTeacher, setSelectedTeacher] = useState<Teacher | null>(null);
 
   const form = useForm({
@@ -47,10 +42,8 @@ export default function TeachersClient({
       email: '',
     },
     validate: {
-      first_name: (value) =>
-        value.trim().length > 0 ? null : 'First name is required',
-      last_name: (value) =>
-        value.trim().length > 0 ? null : 'Last name is required',
+      first_name: (value) => (value.trim().length > 0 ? null : 'First name is required'),
+      last_name: (value) => (value.trim().length > 0 ? null : 'Last name is required'),
       email: (value) => (/^\S+@\S+$/.test(value) ? null : 'Invalid email'),
     },
   });
@@ -79,10 +72,7 @@ export default function TeachersClient({
   const confirmDelete = async () => {
     if (!selectedTeacher) return;
 
-    const { error } = await supabase
-      .from('teachers')
-      .delete()
-      .match({ id: selectedTeacher.id });
+    const { error } = await supabase.from('teachers').delete().match({ id: selectedTeacher.id });
 
     if (error) {
       toast.error(error.message);
@@ -136,18 +126,10 @@ export default function TeachersClient({
       <Table.Td>{teacher.email}</Table.Td>
       <Table.Td>
         <Group gap="xs">
-          <ActionIcon
-            variant="subtle"
-            color="gray"
-            onClick={() => handleEditTeacher(teacher)}
-          >
+          <ActionIcon variant="subtle" color="gray" onClick={() => handleEditTeacher(teacher)}>
             <IconPencil style={{ width: rem(16), height: rem(16) }} />
           </ActionIcon>
-          <ActionIcon
-            variant="subtle"
-            color="red"
-            onClick={() => handleDeleteTeacher(teacher)}
-          >
+          <ActionIcon variant="subtle" color="red" onClick={() => handleDeleteTeacher(teacher)}>
             <IconTrash style={{ width: rem(16), height: rem(16) }} />
           </ActionIcon>
         </Group>
@@ -211,19 +193,13 @@ export default function TeachersClient({
               <Button variant="default" onClick={closeAddEditModal}>
                 Cancel
               </Button>
-              <Button type="submit">
-                {selectedTeacher ? 'Update Teacher' : 'Create Teacher'}
-              </Button>
+              <Button type="submit">{selectedTeacher ? 'Update Teacher' : 'Create Teacher'}</Button>
             </Group>
           </Stack>
         </form>
       </Modal>
 
-      <Modal
-        opened={deleteModalOpened}
-        onClose={closeDeleteModal}
-        title="Confirm Deletion"
-      >
+      <Modal opened={deleteModalOpened} onClose={closeDeleteModal} title="Confirm Deletion">
         <Stack>
           <Text>
             Are you sure you want to delete{' '}
@@ -244,4 +220,4 @@ export default function TeachersClient({
       </Modal>
     </>
   );
-} 
+}

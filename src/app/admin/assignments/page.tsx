@@ -1,7 +1,10 @@
 'use client';
 
-import { supabase } from '@/lib/supabaseClient';
+import React, { useMemo, useState } from 'react';
+import { IconPencil, IconTrash } from '@tabler/icons-react';
+import { toast, Toaster } from 'sonner';
 import {
+  ActionIcon,
   Button,
   Card,
   Checkbox,
@@ -9,19 +12,16 @@ import {
   Group,
   Modal,
   Select,
+  Stack,
   Table,
+  Text,
   TextInput,
   Title,
-  ActionIcon,
-  Stack,
-  Text,
 } from '@mantine/core';
+import { TimeInput } from '@mantine/dates';
 import { useForm } from '@mantine/form';
 import { useDisclosure } from '@mantine/hooks';
-import { TimeInput } from '@mantine/dates';
-import React, { useMemo, useState } from 'react';
-import { Toaster, toast } from 'sonner';
-import { IconPencil, IconTrash } from '@tabler/icons-react';
+import { supabase } from '@/lib/supabaseClient';
 import {
   AssignmentsClientComponent,
   ClassOffering,
@@ -55,7 +55,13 @@ const dayOfWeekMap: { [key: number]: string } = {
 // ##################################
 // ## CLIENT COMPONENT
 // ##################################
-function TimeslotsClientComponent({ initialTimeslots, schoolId }: { initialTimeslots: TimeSlot[], schoolId: string }) {
+function TimeslotsClientComponent({
+  initialTimeslots,
+  schoolId,
+}: {
+  initialTimeslots: TimeSlot[];
+  schoolId: string;
+}) {
   const [slots, setSlots] = useState(initialTimeslots);
   const [editingSlot, setEditingSlot] = useState<TimeSlot | null>(null);
   const [slotToDelete, setSlotToDelete] = useState<TimeSlot | null>(null);
@@ -72,16 +78,17 @@ function TimeslotsClientComponent({ initialTimeslots, schoolId }: { initialTimes
       slot_name: '',
     },
     validate: {
-        start_time: (value) => (value ? null : 'Start time is required'),
-        end_time: (value, values) => {
-            if (!value) return 'End time is required';
-            if (value <= values.start_time) return 'End time must be after start time';
-            return null;
-        },
-        slot_name: (value, values) => (
-            !values.is_teaching_period && !value ? 'Custom slot name is required for non-teaching periods' : null
-        ),
-    }
+      start_time: (value) => (value ? null : 'Start time is required'),
+      end_time: (value, values) => {
+        if (!value) return 'End time is required';
+        if (value <= values.start_time) return 'End time must be after start time';
+        return null;
+      },
+      slot_name: (value, values) =>
+        !values.is_teaching_period && !value
+          ? 'Custom slot name is required for non-teaching periods'
+          : null,
+    },
   });
 
   const handleAddNew = () => {
@@ -93,19 +100,19 @@ function TimeslotsClientComponent({ initialTimeslots, schoolId }: { initialTimes
   const handleEdit = (slot: TimeSlot) => {
     setEditingSlot(slot);
     form.setValues({
-        day_of_week: slot.day_of_week,
-        start_time: slot.start_time,
-        end_time: slot.end_time,
-        is_teaching_period: slot.is_teaching_period,
-        slot_name: slot.slot_name || '',
+      day_of_week: slot.day_of_week,
+      start_time: slot.start_time,
+      end_time: slot.end_time,
+      is_teaching_period: slot.is_teaching_period,
+      slot_name: slot.slot_name || '',
     });
     modalHandlers.open();
   };
-  
+
   const handleDeleteClick = (slot: TimeSlot) => {
     setSlotToDelete(slot);
     alertHandlers.open();
-  }
+  };
 
   const confirmDelete = async () => {
     if (!slotToDelete) return;
@@ -114,17 +121,17 @@ function TimeslotsClientComponent({ initialTimeslots, schoolId }: { initialTimes
     if (error) {
       toast.error(`Failed to delete slot: ${error.message}`);
     } else {
-      setSlots(slots.filter(s => s.id !== slotToDelete.id));
+      setSlots(slots.filter((s) => s.id !== slotToDelete.id));
       toast.success('Time slot deleted successfully!');
     }
     alertHandlers.close();
     setSlotToDelete(null);
-  }
+  };
 
   const handleSubmit = async (values: typeof form.values) => {
     const slotData = {
-        ...values,
-        slot_name: values.is_teaching_period ? null : values.slot_name,
+      ...values,
+      slot_name: values.is_teaching_period ? null : values.slot_name,
     };
 
     if (editingSlot) {
@@ -138,7 +145,7 @@ function TimeslotsClientComponent({ initialTimeslots, schoolId }: { initialTimes
       if (error) {
         toast.error(`Failed to update slot: ${error.message}`);
       } else if (data) {
-        setSlots(slots.map(s => s.id === editingSlot.id ? data : s));
+        setSlots(slots.map((s) => (s.id === editingSlot.id ? data : s)));
         toast.success('Time slot updated successfully!');
         modalHandlers.close();
       }
@@ -161,7 +168,7 @@ function TimeslotsClientComponent({ initialTimeslots, schoolId }: { initialTimes
 
   const groupedSlots = useMemo(() => {
     const groups: { [key: string]: TimeSlot[] } = {};
-    slots.forEach(slot => {
+    slots.forEach((slot) => {
       const dayName = dayOfWeekMap[slot.day_of_week];
       if (!groups[dayName]) {
         groups[dayName] = [];
@@ -174,11 +181,11 @@ function TimeslotsClientComponent({ initialTimeslots, schoolId }: { initialTimes
     }
     return groups;
   }, [slots]);
-  
+
   const sortedDays = Object.keys(groupedSlots).sort((a, b) => {
-      const dayA = Object.keys(dayOfWeekMap).find(key => dayOfWeekMap[parseInt(key)] === a);
-      const dayB = Object.keys(dayOfWeekMap).find(key => dayOfWeekMap[parseInt(key)] === b);
-      return parseInt(dayA!) - parseInt(dayB!);
+    const dayA = Object.keys(dayOfWeekMap).find((key) => dayOfWeekMap[parseInt(key)] === a);
+    const dayB = Object.keys(dayOfWeekMap).find((key) => dayOfWeekMap[parseInt(key)] === b);
+    return parseInt(dayA!) - parseInt(dayB!);
   });
 
   return (
@@ -190,71 +197,85 @@ function TimeslotsClientComponent({ initialTimeslots, schoolId }: { initialTimes
       </Group>
 
       <Stack>
-        {sortedDays.map(dayName => (
+        {sortedDays.map((dayName) => (
           <Card key={dayName} shadow="sm" p="lg" radius="md" withBorder>
             <Card.Section withBorder inheritPadding py="xs">
-                <Title order={3}>{dayName}</Title>
+              <Title order={3}>{dayName}</Title>
             </Card.Section>
             <Table mt="md" striped highlightOnHover>
-                <Table.Thead>
-                    <Table.Tr>
-                        <Table.Th>Slot Type</Table.Th>
-                        <Table.Th>Start Time</Table.Th>
-                        <Table.Th>End Time</Table.Th>
-                        <Table.Th>Actions</Table.Th>
-                    </Table.Tr>
-                </Table.Thead>
-                <Table.Tbody>
-                    {groupedSlots[dayName].map(slot => (
-                        <Table.Tr key={slot.id}>
-                            <Table.Td>{slot.is_teaching_period ? 'Teaching Period' : slot.slot_name}</Table.Td>
-                            <Table.Td>{slot.start_time}</Table.Td>
-                            <Table.Td>{slot.end_time}</Table.Td>
-                            <Table.Td>
-                                <Group gap="xs">
-                                    <ActionIcon variant="light" onClick={() => handleEdit(slot)}><IconPencil size={16} /></ActionIcon>
-                                    <ActionIcon variant="light" color="red" onClick={() => handleDeleteClick(slot)}><IconTrash size={16} /></ActionIcon>
-                                </Group>
-                            </Table.Td>
-                        </Table.Tr>
-                    ))}
-                </Table.Tbody>
+              <Table.Thead>
+                <Table.Tr>
+                  <Table.Th>Slot Type</Table.Th>
+                  <Table.Th>Start Time</Table.Th>
+                  <Table.Th>End Time</Table.Th>
+                  <Table.Th>Actions</Table.Th>
+                </Table.Tr>
+              </Table.Thead>
+              <Table.Tbody>
+                {groupedSlots[dayName].map((slot) => (
+                  <Table.Tr key={slot.id}>
+                    <Table.Td>
+                      {slot.is_teaching_period ? 'Teaching Period' : slot.slot_name}
+                    </Table.Td>
+                    <Table.Td>{slot.start_time}</Table.Td>
+                    <Table.Td>{slot.end_time}</Table.Td>
+                    <Table.Td>
+                      <Group gap="xs">
+                        <ActionIcon variant="light" onClick={() => handleEdit(slot)}>
+                          <IconPencil size={16} />
+                        </ActionIcon>
+                        <ActionIcon
+                          variant="light"
+                          color="red"
+                          onClick={() => handleDeleteClick(slot)}
+                        >
+                          <IconTrash size={16} />
+                        </ActionIcon>
+                      </Group>
+                    </Table.Td>
+                  </Table.Tr>
+                ))}
+              </Table.Tbody>
             </Table>
           </Card>
         ))}
       </Stack>
-      
+
       {/* Add/Edit Modal */}
-      <Modal opened={isModalOpen} onClose={modalHandlers.close} title={editingSlot ? 'Edit Time Slot' : 'Add New Time Slot'}>
+      <Modal
+        opened={isModalOpen}
+        onClose={modalHandlers.close}
+        title={editingSlot ? 'Edit Time Slot' : 'Add New Time Slot'}
+      >
         <form onSubmit={form.onSubmit(handleSubmit)}>
-            <Stack>
-                <Select
-                    label="Day of the Week"
-                    placeholder="Select a day"
-                    data={Object.entries(dayOfWeekMap).map(([value, label]) => ({ value: value, label }))}
-                    {...form.getInputProps('day_of_week')}
-                    required
-                />
-                <Group grow>
-                    <TimeInput label="Start Time" {...form.getInputProps('start_time')} required />
-                    <TimeInput label="End Time" {...form.getInputProps('end_time')} required />
-                </Group>
-                <Checkbox
-                    label="Is this a teaching period?"
-                    {...form.getInputProps('is_teaching_period', { type: 'checkbox' })}
-                />
-                {!form.values.is_teaching_period && (
-                    <TextInput
-                        label="Custom Slot Name"
-                        placeholder="e.g., Lunch Break"
-                        {...form.getInputProps('slot_name')}
-                        required
-                    />
-                )}
-                <Group justify="flex-end" mt="md">
-                    <Button type="submit">Save Changes</Button>
-                </Group>
-            </Stack>
+          <Stack>
+            <Select
+              label="Day of the Week"
+              placeholder="Select a day"
+              data={Object.entries(dayOfWeekMap).map(([value, label]) => ({ value: value, label }))}
+              {...form.getInputProps('day_of_week')}
+              required
+            />
+            <Group grow>
+              <TimeInput label="Start Time" {...form.getInputProps('start_time')} required />
+              <TimeInput label="End Time" {...form.getInputProps('end_time')} required />
+            </Group>
+            <Checkbox
+              label="Is this a teaching period?"
+              {...form.getInputProps('is_teaching_period', { type: 'checkbox' })}
+            />
+            {!form.values.is_teaching_period && (
+              <TextInput
+                label="Custom Slot Name"
+                placeholder="e.g., Lunch Break"
+                {...form.getInputProps('slot_name')}
+                required
+              />
+            )}
+            <Group justify="flex-end" mt="md">
+              <Button type="submit">Save Changes</Button>
+            </Group>
+          </Stack>
         </form>
       </Modal>
 
@@ -262,11 +283,14 @@ function TimeslotsClientComponent({ initialTimeslots, schoolId }: { initialTimes
       <Modal opened={isAlertOpen} onClose={alertHandlers.close} title="Confirm Deletion">
         <Text>Are you sure you want to delete this time slot? This action cannot be undone.</Text>
         <Group justify="flex-end" mt="md">
-            <Button variant="default" onClick={alertHandlers.close}>Cancel</Button>
-            <Button color="red" onClick={confirmDelete}>Delete</Button>
+          <Button variant="default" onClick={alertHandlers.close}>
+            Cancel
+          </Button>
+          <Button color="red" onClick={confirmDelete}>
+            Delete
+          </Button>
         </Group>
       </Modal>
-
     </Container>
   );
 }
@@ -275,9 +299,17 @@ function TimeslotsClientComponent({ initialTimeslots, schoolId }: { initialTimes
 // ## SERVER COMPONENT (Default Export)
 // ##################################
 const AssignmentsPage = async () => {
+  // Get the current user
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  if (userError || !user) {
+    window.location.href = '/login';
+    return null;
+  }
+
   const { data: school, error: schoolError } = await supabase
     .from('schools')
     .select('id')
+    .eq('user_id', user.id)
     .limit(1)
     .single();
 
@@ -303,9 +335,12 @@ const AssignmentsPage = async () => {
           class_sections ( id, name ),
           terms ( id, name )
         )
-      `),
-    supabase.from('teachers').select('id, first_name, last_name').eq('school_id', schoolId),
-    supabase.from('class_offerings').select(`
+      `).eq('user_id', user.id),
+    supabase.from('teachers').select('id, first_name, last_name').eq('user_id', user.id),
+    supabase
+      .from('class_offerings')
+      .select(
+        `
         id,
         school_id,
         subject_id,
@@ -314,8 +349,10 @@ const AssignmentsPage = async () => {
         subjects ( id, name ),
         class_sections ( id, name ),
         terms ( id, name )
-      `).eq('school_id', schoolId),
-    supabase.from('teacher_qualifications').select('teacher_id, subject_id'),
+      `
+      )
+      .eq('user_id', user.id),
+    supabase.from('teacher_qualifications').select('teacher_id, subject_id').eq('user_id', user.id),
   ]);
 
   const { data: assignments, error: assignmentsError } = assignmentsRes;
@@ -342,4 +379,4 @@ const AssignmentsPage = async () => {
   );
 };
 
-export default AssignmentsPage; 
+export default AssignmentsPage;

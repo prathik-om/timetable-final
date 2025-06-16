@@ -27,6 +27,9 @@
     "paths": {
       "@/*": [
         "src/*"
+      ],
+      "@/types/database": [
+        "src/types/database.types.ts"
       ]
     },
     "plugins": [

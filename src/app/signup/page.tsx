@@ -2,10 +2,20 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@/utils/supabase/client';
-import { TextInput, PasswordInput, Button, Paper, Title, Container, Text, Anchor, Select, Stack } from '@mantine/core';
-import { useForm } from '@mantine/form';
 import { toast } from 'sonner';
+import {
+  Anchor,
+  Button,
+  Container,
+  Paper,
+  PasswordInput,
+  Select,
+  Text,
+  TextInput,
+  Title,
+} from '@mantine/core';
+import { useForm } from '@mantine/form';
+import { createClient } from '@/utils/supabase/client';
 
 type SignupForm = {
   email: string;
@@ -42,7 +52,7 @@ export default function SignupPage() {
     try {
       setIsLoading(true);
 
-      // 1. Create the user account
+      // Create new user with email confirmation
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: values.email,
         password: values.password,
@@ -50,28 +60,38 @@ export default function SignupPage() {
           data: {
             role: values.role,
           },
+          emailRedirectTo: `${window.location.origin}/auth/callback`
         },
       });
 
-      if (authError) throw authError;
+      if (authError) {
+        // Check if error is because user already exists
+        if (authError.message.toLowerCase().includes('email already registered')) {
+          toast.error('An account with this email already exists. Please login instead.');
+          router.push('/login');
+          return;
+        }
+        throw authError;
+      }
+
       if (!authData.user) throw new Error('No user data returned');
 
-      // 2. If admin, create the school
+      // If admin, create the school
       if (values.role === 'admin' && values.schoolName) {
-        const { error: schoolError } = await supabase
-          .from('schools')
-          .insert({
-            name: values.schoolName,
-            user_id: authData.user.id,
-          });
-
+        const { error: schoolError } = await supabase.from('schools').insert({
+          name: values.schoolName,
+          user_id: authData.user.id,
+          is_setup_complete: false,
+        });
         if (schoolError) throw schoolError;
       }
 
-      toast.success('Account created successfully! Please check your email for verification.');
+      toast.success('Account created! Please check your email to confirm your account.');
       router.push('/login');
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to create account');
+
+    } catch (error: any) {
+      console.error('Signup error:', error);
+      toast.error(error.message || 'Failed to create account');
     } finally {
       setIsLoading(false);
     }
@@ -91,49 +111,50 @@ export default function SignupPage() {
 
       <Paper withBorder shadow="md" p={30} mt={30} radius="md">
         <form onSubmit={form.onSubmit(handleSubmit)}>
-          <Stack>
+          <TextInput
+            label="Email"
+            placeholder="you@example.com"
+            {...form.getInputProps('email')}
+          />
+
+          <PasswordInput
+            label="Password"
+            placeholder="Your password"
+            mt="md"
+            {...form.getInputProps('password')}
+          />
+
+          <PasswordInput
+            label="Confirm Password"
+            placeholder="Confirm your password"
+            mt="md"
+            {...form.getInputProps('confirmPassword')}
+          />
+
+          <Select
+            label="Role"
+            mt="md"
+            data={[
+              { value: 'admin', label: 'School Administrator' },
+              { value: 'teacher', label: 'Teacher' },
+            ]}
+            {...form.getInputProps('role')}
+          />
+
+          {form.values.role === 'admin' && (
             <TextInput
-              label="Email"
-              placeholder="you@example.com"
-              required
-              {...form.getInputProps('email')}
+              label="School Name"
+              placeholder="Enter your school's name"
+              mt="md"
+              {...form.getInputProps('schoolName')}
             />
-            <PasswordInput
-              label="Password"
-              placeholder="Your password"
-              required
-              {...form.getInputProps('password')}
-            />
-            <PasswordInput
-              label="Confirm Password"
-              placeholder="Confirm your password"
-              required
-              {...form.getInputProps('confirmPassword')}
-            />
-            <Select
-              label="Role"
-              placeholder="Select your role"
-              data={[
-                { value: 'admin', label: 'School Administrator' },
-                { value: 'teacher', label: 'Teacher' },
-              ]}
-              required
-              {...form.getInputProps('role')}
-            />
-            {form.values.role === 'admin' && (
-              <TextInput
-                label="School Name"
-                placeholder="Enter your school name"
-                required
-                {...form.getInputProps('schoolName')}
-              />
-            )}
-            <Button fullWidth mt="xl" type="submit" loading={isLoading}>
-              Create account
-            </Button>
-          </Stack>
+          )}
+
+          <Button type="submit" fullWidth mt="xl" loading={isLoading}>
+            Sign up
+          </Button>
         </form>
       </Paper>
     </Container>
   );
-} 
+}

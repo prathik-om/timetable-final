@@ -1,35 +1,44 @@
-import { supabase } from '@/lib/supabaseClient';
 import { Container, Text } from '@mantine/core';
+import { redirect } from 'next/navigation';
+import { createClient } from '@/utils/supabase/server';
 import { TimeslotsClientComponent } from './TimeslotsClient';
 
-const TimeslotsPage = async () => {
-  // First, get the UUID of the school. We'll assume we're working with the first school in the DB.
+export const dynamic = 'force-dynamic';
+
+export default async function TimeslotsPage() {
+  const supabase = await createClient();
+
+  // Ensure user is authenticated
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  if (userError || !user) {
+    redirect('/login');
+  }
+
+  // Get the user's school
   const { data: school, error: schoolError } = await supabase
     .from('schools')
     .select('id')
-    .limit(1)
+    .eq('user_id', user.id)
     .single();
 
   if (schoolError || !school) {
-    console.error('Error fetching school:', schoolError);
     return (
       <Container>
         <Text color="red">Error: Could not find a school in the database.</Text>
       </Container>
     );
   }
-  const schoolId = school.id;
 
-  const { data: time_slots, error } = await supabase
+  // Fetch timeslots for this school
+  const { data: time_slots, error: slotsError } = await supabase
     .from('time_slots')
     .select('*')
-    .eq('school_id', schoolId)
+    .eq('school_id', school.id)
     .order('day_of_week', { ascending: true })
     .order('start_time', { ascending: true });
 
-  if (error) {
-    console.error('Error fetching time slots:', error);
-    // Render an error message or fallback UI
+  if (slotsError) {
+    console.error('Error fetching time slots:', slotsError);
     return (
       <Container>
         <Text color="red">Failed to load time slots. Please try again later.</Text>
@@ -37,7 +46,13 @@ const TimeslotsPage = async () => {
     );
   }
 
-  return <TimeslotsClientComponent initialTimeslots={time_slots || []} schoolId={schoolId} />;
-};
+  // Transform the data to match the expected types
+  const transformedSlots = (time_slots || []).map(slot => ({
+    ...slot,
+    id: parseInt(slot.id), // Convert string id to number
+    is_teaching_period: slot.is_teaching_period || false, // Provide default value
+    slot_name: slot.slot_name || '' // Provide default value
+  }));
 
-export default TimeslotsPage; 
+  return <TimeslotsClientComponent initialTimeslots={transformedSlots} schoolId={school.id} />;
+}

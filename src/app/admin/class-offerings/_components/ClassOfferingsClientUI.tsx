@@ -2,22 +2,12 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@/utils/supabase/client';
-import { Database } from '@/types/database';
-import { toast } from 'sonner';
 import { IconPencil, IconTrash } from '@tabler/icons-react';
-import {
-  Card,
-  Button,
-  Table,
-  Modal,
-  Select,
-  NumberInput,
-  Group,
-  Text,
-  Stack,
-} from '@mantine/core';
+import { toast } from 'sonner';
+import { Button, Card, Group, Modal, NumberInput, Select, Stack, Table, Text } from '@mantine/core';
 import { useForm } from '@mantine/form';
+import { Database } from '@/types/database.types';
+import { createClient } from '@/utils/supabase/client';
 
 type ClassOffering = Database['public']['Tables']['class_offerings']['Row'];
 type Term = Database['public']['Tables']['terms']['Row'];
@@ -73,10 +63,7 @@ export default function ClassOfferingsClientUI({
       console.log('Submitting data:', offeringData);
 
       const { data, error } = selectedOffering
-        ? await supabase
-            .from('class_offerings')
-            .update(offeringData)
-            .eq('id', selectedOffering.id)
+        ? await supabase.from('class_offerings').update(offeringData).eq('id', selectedOffering.id)
         : await supabase.from('class_offerings').insert(offeringData);
 
       if (error) {
@@ -105,7 +92,7 @@ export default function ClassOfferingsClientUI({
 
     try {
       const { error } = await supabase.from('class_offerings').delete().eq('id', deleteId);
-      
+
       if (error) {
         console.error('Supabase error:', error);
         throw new Error(error.message);
@@ -122,14 +109,14 @@ export default function ClassOfferingsClientUI({
   };
 
   // Helper function to get human-readable names
-  const getTermName = (termId: number) => 
-    terms.find(t => t.id === termId)?.name || 'Unknown Term';
-  
-  const getClassSectionName = (sectionId: number) => 
-    classSections.find(s => s.id === sectionId)?.name || 'Unknown Section';
-  
-  const getSubjectName = (subjectId: number) => 
-    subjects.find(s => s.id === subjectId)?.name || 'Unknown Subject';
+  const getTermName = (termId: string) =>
+    terms.find((t) => t.id === termId)?.name || 'Unknown Term';
+
+  const getClassSectionName = (sectionId: string) =>
+    classSections.find((s) => s.id === sectionId)?.name || 'Unknown Section';
+
+  const getSubjectName = (subjectId: string) =>
+    subjects.find((s) => s.id === subjectId)?.name || 'Unknown Subject';
 
   return (
     <Stack>
@@ -204,19 +191,25 @@ export default function ClassOfferingsClientUI({
             <Select
               label="Term"
               placeholder="Select a term"
-              data={terms.map(term => ({ value: term.id.toString(), label: term.name }))}
+              data={terms.map((term) => ({ value: term.id.toString(), label: term.name }))}
               {...form.getInputProps('term_id')}
             />
             <Select
               label="Class Section"
               placeholder="Select a class section"
-              data={classSections.map(section => ({ value: section.id.toString(), label: section.name }))}
+              data={classSections.map((section) => ({
+                value: section.id.toString(),
+                label: section.name,
+              }))}
               {...form.getInputProps('class_section_id')}
             />
             <Select
               label="Subject"
               placeholder="Select a subject"
-              data={subjects.map(subject => ({ value: subject.id.toString(), label: subject.name }))}
+              data={subjects.map((subject) => ({
+                value: subject.id.toString(),
+                label: subject.name,
+              }))}
               {...form.getInputProps('subject_id')}
             />
             <NumberInput
@@ -249,4 +242,4 @@ export default function ClassOfferingsClientUI({
       </Modal>
     </Stack>
   );
-} 
+}

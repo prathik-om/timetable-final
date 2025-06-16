@@ -1,6 +1,8 @@
 'use client';
 
-import { supabase } from '@/lib/supabaseClient';
+import React, { useEffect, useMemo, useState } from 'react';
+import { IconTrash } from '@tabler/icons-react';
+import { toast, Toaster } from 'sonner';
 import {
   ActionIcon,
   Button,
@@ -16,9 +18,7 @@ import {
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { useDisclosure } from '@mantine/hooks';
-import { IconTrash } from '@tabler/icons-react';
-import React, { useEffect, useMemo, useState } from 'react';
-import { Toaster, toast } from 'sonner';
+import { supabase } from '@/lib/supabaseClient';
 
 // #region --- TYPE DEFINITIONS ---
 export type Teacher = {
@@ -93,9 +93,9 @@ export function AssignmentsClientComponent({
   const form = useForm<AssignmentFormData>({
     initialValues: { class_offering_id: null, teacher_id: null },
     validate: {
-        class_offering_id: (value) => (value ? null : 'A class offering must be selected'),
-        teacher_id: (value) => (value ? null : 'A teacher must be selected'),
-    }
+      class_offering_id: (value) => (value ? null : 'A class offering must be selected'),
+      teacher_id: (value) => (value ? null : 'A teacher must be selected'),
+    },
   });
 
   // Effect to filter teachers when a class offering is selected
@@ -106,18 +106,18 @@ export function AssignmentsClientComponent({
       return;
     }
 
-    const offering = classOfferings.find(o => o.id === Number(selectedOfferingId));
+    const offering = classOfferings.find((o) => o.id === Number(selectedOfferingId));
     if (!offering) return;
 
     const qualifiedTeacherIds = qualifications
-      .filter(q => q.subject_id === offering.subject_id)
-      .map(q => q.teacher_id);
-      
-    const filteredTeachers = teachers.filter(t => qualifiedTeacherIds.includes(t.id));
+      .filter((q) => q.subject_id === offering.subject_id)
+      .map((q) => q.teacher_id);
+
+    const filteredTeachers = teachers.filter((t) => qualifiedTeacherIds.includes(t.id));
     setQualifiedTeachers(filteredTeachers);
 
     if (form.values.teacher_id && !qualifiedTeacherIds.includes(Number(form.values.teacher_id))) {
-        form.setFieldValue('teacher_id', null);
+      form.setFieldValue('teacher_id', null);
     }
   }, [form.values.class_offering_id, classOfferings, qualifications, teachers, form]);
 
@@ -134,7 +134,10 @@ export function AssignmentsClientComponent({
 
   const confirmDelete = async () => {
     if (!assignmentToDelete) return;
-    const { error } = await supabase.from('teaching_assignments').delete().eq('id', assignmentToDelete.id);
+    const { error } = await supabase
+      .from('teaching_assignments')
+      .delete()
+      .eq('id', assignmentToDelete.id);
 
     if (error) {
       toast.error(`Failed to delete assignment: ${error.message}`);
@@ -153,7 +156,8 @@ export function AssignmentsClientComponent({
         teacher_id: Number(values.teacher_id),
         class_offering_id: Number(values.class_offering_id),
       })
-      .select(`
+      .select(
+        `
         id,
         teachers ( id, first_name, last_name ),
         class_offerings (
@@ -163,30 +167,39 @@ export function AssignmentsClientComponent({
           class_sections ( id, name ),
           terms ( id, name )
         )
-      `)
+      `
+      )
       .single();
 
     if (error) {
-      toast.error(error.message, { description: 'This can happen if the assignment already exists.' });
+      toast.error(error.message, {
+        description: 'This can happen if the assignment already exists.',
+      });
     } else if (data) {
-        const newAssignment = data as unknown as TeachingAssignment;
-        setAssignments([...assignments, newAssignment]);
-        toast.success('Assignment created successfully!');
-        modalHandlers.close();
+      const newAssignment = data as unknown as TeachingAssignment;
+      setAssignments([...assignments, newAssignment]);
+      toast.success('Assignment created successfully!');
+      modalHandlers.close();
     }
   };
-  
-  const classOfferingsOptions = useMemo(() => 
-    classOfferings.map(o => ({
-      value: String(o.id),
-      label: `${o.class_sections.name}: ${o.subjects.name} (${o.terms.name})`
-    })), [classOfferings]);
-    
-  const qualifiedTeachersOptions = useMemo(() =>
-    qualifiedTeachers.map(t => ({
-      value: String(t.id),
-      label: `${t.first_name} ${t.last_name}`
-    })), [qualifiedTeachers]);
+
+  const classOfferingsOptions = useMemo(
+    () =>
+      classOfferings.map((o) => ({
+        value: String(o.id),
+        label: `${o.class_sections.name}: ${o.subjects.name} (${o.terms.name})`,
+      })),
+    [classOfferings]
+  );
+
+  const qualifiedTeachersOptions = useMemo(
+    () =>
+      qualifiedTeachers.map((t) => ({
+        value: String(t.id),
+        label: `${t.first_name} ${t.last_name}`,
+      })),
+    [qualifiedTeachers]
+  );
 
   return (
     <Container my="md">
@@ -214,9 +227,9 @@ export function AssignmentsClientComponent({
                 <Table.Td>{a.class_offerings.class_sections.name}</Table.Td>
                 <Table.Td>{a.class_offerings.terms.name}</Table.Td>
                 <Table.Td>
-                    <ActionIcon variant="light" color="red" onClick={() => handleDeleteClick(a)}>
-                      <IconTrash size={16} />
-                    </ActionIcon>
+                  <ActionIcon variant="light" color="red" onClick={() => handleDeleteClick(a)}>
+                    <IconTrash size={16} />
+                  </ActionIcon>
                 </Table.Td>
               </Table.Tr>
             ))}
@@ -254,10 +267,14 @@ export function AssignmentsClientComponent({
       <Modal opened={isAlertOpen} onClose={alertHandlers.close} title="Confirm Deletion">
         <Text>Are you sure you want to delete this assignment? This action cannot be undone.</Text>
         <Group justify="flex-end" mt="md">
-          <Button variant="default" onClick={alertHandlers.close}>Cancel</Button>
-          <Button color="red" onClick={confirmDelete}>Delete</Button>
+          <Button variant="default" onClick={alertHandlers.close}>
+            Cancel
+          </Button>
+          <Button color="red" onClick={confirmDelete}>
+            Delete
+          </Button>
         </Group>
       </Modal>
     </Container>
   );
-} 
+}

@@ -2,12 +2,12 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@/utils/supabase/client';
-import { Database } from '@/types/database';
-import { toast } from 'sonner';
 import { IconPencil, IconTrash } from '@tabler/icons-react';
-import { Card, Button, Table, Modal, NumberInput, TextInput, Group, Text } from '@mantine/core';
+import { toast } from 'sonner';
+import { Button, Card, Group, Modal, NumberInput, Table, Text, TextInput } from '@mantine/core';
 import { useForm } from '@mantine/form';
+import { Database } from '@/types/database.types';
+import { createClient } from '@/utils/supabase/client';
 
 type ClassSection = Database['public']['Tables']['class_sections']['Row'];
 
@@ -42,10 +42,7 @@ export default function ClassSectionsClientUI({
     const classSectionData = { ...values, school_id: schoolId };
 
     const promise = selectedClassSection
-      ? supabase
-          .from('class_sections')
-          .update(classSectionData)
-          .eq('id', selectedClassSection.id)
+      ? supabase.from('class_sections').update(classSectionData).eq('id', selectedClassSection.id)
       : supabase.from('class_sections').insert(classSectionData);
 
     toast.promise(
@@ -147,13 +144,13 @@ export default function ClassSectionsClientUI({
         </Table.Tbody>
       </Table>
 
-      <Modal 
-        opened={isModalOpen} 
+      <Modal
+        opened={isModalOpen}
         onClose={() => {
           setIsModalOpen(false);
           setSelectedClassSection(null);
           form.reset();
-        }} 
+        }}
         title={selectedClassSection ? 'Edit Class Section' : 'Add New Class Section'}
       >
         <form onSubmit={form.onSubmit(handleSubmit)}>
@@ -193,4 +190,4 @@ export default function ClassSectionsClientUI({
       </Modal>
     </Card>
   );
-} 
+}

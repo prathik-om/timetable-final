@@ -1,69 +1,46 @@
-import { createClient } from '@/utils/supabase/server';
-import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
+import { createClient } from '@/utils/supabase/server';
 import TeachingAssignmentsClient from './_components/TeachingAssignmentsClient';
 
+export const dynamic = 'force-dynamic';
+
 export default async function TeachingAssignmentsPage() {
-  const cookieStore = cookies();
   const supabase = await createClient();
 
   // Get the current user
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
 
   if (userError || !user) {
     redirect('/login');
   }
 
-  // Get the first school (since we don't have user_id anymore)
-  const { data: schoolData, error: schoolError } = await supabase
+  // Get the user's school
+  const { data: school, error: schoolError } = await supabase
     .from('schools')
     .select('id')
+    .eq('user_id', user.id)
     .limit(1)
     .single();
 
-  if (schoolError || !schoolData) {
+  if (schoolError || !school) {
     redirect('/admin/school-profile');
   }
 
   try {
-    // First, fetch all class offerings to ensure we have the base data
-    const { data: classOfferings, error: classOfferingsError } = await supabase
-      .from('class_offerings')
-      .select(`
-        id,
-        periods_per_week,
-        term:terms (
-          id,
-          name,
-          start_date,
-          end_date
-        ),
-        class_section:class_sections (
-          id,
-          name,
-          grade_level
-        ),
-        subject:subjects (
-          id,
-          name
-        )
-      `)
-      .eq('school_id', schoolData.id);
-
-    if (classOfferingsError) {
-      console.error('Error fetching class offerings:', classOfferingsError);
-      throw new Error('Failed to fetch class offerings');
-    }
-
-    // Then fetch teaching assignments with all related data
-    const { data: assignments, error: assignmentsError } = await supabase
-      .from('teaching_assignments')
-      .select(`
-        id,
-        class_offering_id,
-        teacher_id,
-        school_id,
-        class_offering:class_offerings (
+    // Fetch all required data in parallel
+    const [
+      { data: classOfferings, error: classOfferingsError },
+      { data: teachers, error: teachersError },
+      { data: teachingAssignments, error: assignmentsError },
+      { data: qualifications, error: qualificationsError }
+    ] = await Promise.all([
+      // Fetch class offerings
+      supabase
+        .from('class_offerings')
+        .select(`
           id,
           periods_per_week,
           term:terms (
@@ -79,119 +56,141 @@ export default async function TeachingAssignmentsPage() {
           ),
           subject:subjects (
             id,
-            name
+            name,
+            code
           )
-        ),
-        teacher:teachers (
-          id,
-          first_name,
-          last_name
-        )
-      `)
-      .eq('school_id', schoolData.id);
-
-    if (assignmentsError) {
-      console.error('Error fetching assignments:', assignmentsError);
-      throw new Error('Failed to fetch assignments');
-    }
-
-    // Fetch teachers and qualifications
-    const [
-      { data: teachers, error: teachersError },
-      { data: qualifications, error: qualificationsError }
-    ] = await Promise.all([
+        `)
+        .eq('school_id', school.id),
+      
+      // Fetch teachers
       supabase
         .from('teachers')
         .select('*')
-        .eq('school_id', schoolData.id),
+        .eq('user_id', user.id)
+        .order('last_name'),
+      
+      // Fetch teaching assignments
+      supabase
+        .from('teaching_assignments')
+        .select(`
+          id,
+          class_offering:class_offerings (
+            id,
+            periods_per_week,
+            term:terms (
+              id,
+              name,
+              start_date,
+              end_date
+            ),
+            class_section:class_sections (
+              id,
+              name,
+              grade_level
+            ),
+            subject:subjects (
+              id,
+              name,
+              code
+            )
+          ),
+          teacher:teachers (
+            id,
+            first_name,
+            last_name,
+            email
+          )
+        `)
+        .eq('school_id', school.id),
+      
+      // Fetch teacher qualifications
       supabase
         .from('teacher_qualifications')
-        .select('*')
-        .eq('school_id', schoolData.id)
+        .select(`
+          id,
+          teacher_id,
+          subject_id
+        `)
+        .eq('school_id', school.id)
     ]);
 
-    if (teachersError) {
-      console.error('Error fetching teachers:', teachersError);
-      throw new Error('Failed to fetch teachers');
-    }
+    // Check for any errors
+    if (classOfferingsError) throw classOfferingsError;
+    if (teachersError) throw teachersError;
+    if (assignmentsError) throw assignmentsError;
+    if (qualificationsError) throw qualificationsError;
 
-    if (qualificationsError) {
-      console.error('Error fetching qualifications:', qualificationsError);
-      throw new Error('Failed to fetch qualifications');
-    }
+    // Calculate validation metrics for assignments
+    const totalAssignments = (teachingAssignments || []).length;
+    const assignmentsWithValidClassOffering = (teachingAssignments || []).filter(
+      a => a.class_offering && a.class_offering.id
+    ).length;
+    const assignmentsWithValidTeacher = (teachingAssignments || []).filter(
+      a => a.teacher && a.teacher.id
+    ).length;
 
-    // Validate and log data consistency
+    // Calculate validation metrics for class offerings
+    const totalClassOfferings = (classOfferings || []).length;
+    const classOfferingsWithValidTerm = (classOfferings || []).filter(
+      co => co.term && co.term.id
+    ).length;
+    const classOfferingsWithValidClassSection = (classOfferings || []).filter(
+      co => co.class_section && co.class_section.id
+    ).length;
+    const classOfferingsWithValidSubject = (classOfferings || []).filter(
+      co => co.subject && co.subject.id
+    ).length;
+
+    // Calculate validation metrics for teachers
+    const totalTeachers = (teachers || []).length;
+    const teachersWithQualifications = new Set(
+      (qualifications || []).map(q => q.teacher_id)
+    ).size;
+
+    // Data validation object
     const dataValidation = {
       assignments: {
-        total: assignments?.length || 0,
-        withValidClassOffering: assignments?.filter(a => a.class_offering)?.length || 0,
-        withValidTeacher: assignments?.filter(a => a.teacher)?.length || 0,
+        total: totalAssignments,
+        withValidClassOffering: assignmentsWithValidClassOffering,
+        withValidTeacher: assignmentsWithValidTeacher
       },
       classOfferings: {
-        total: classOfferings?.length || 0,
-        withValidTerm: classOfferings?.filter(o => o.term)?.length || 0,
-        withValidClassSection: classOfferings?.filter(o => o.class_section)?.length || 0,
-        withValidSubject: classOfferings?.filter(o => o.subject)?.length || 0,
+        total: totalClassOfferings,
+        withValidTerm: classOfferingsWithValidTerm,
+        withValidClassSection: classOfferingsWithValidClassSection,
+        withValidSubject: classOfferingsWithValidSubject
       },
       teachers: {
-        total: teachers?.length || 0,
+        total: totalTeachers,
+        withQualifications: teachersWithQualifications
       },
       qualifications: {
-        total: qualifications?.length || 0,
+        total: (qualifications || []).length,
+        uniqueTeachers: teachersWithQualifications,
+        uniqueSubjects: new Set((qualifications || []).map(q => q.subject_id)).size
       }
     };
 
-    console.log('Data Validation:', dataValidation);
-
-    // Log any data inconsistencies
-    if (dataValidation.assignments.total > 0) {
-      if (dataValidation.assignments.withValidClassOffering < dataValidation.assignments.total) {
-        console.warn('Some assignments have missing class offering data');
-      }
-      if (dataValidation.assignments.withValidTeacher < dataValidation.assignments.total) {
-        console.warn('Some assignments have missing teacher data');
-      }
-    }
-
-    if (dataValidation.classOfferings.total > 0) {
-      if (dataValidation.classOfferings.withValidTerm < dataValidation.classOfferings.total) {
-        console.warn('Some class offerings have missing term data');
-      }
-      if (dataValidation.classOfferings.withValidClassSection < dataValidation.classOfferings.total) {
-        console.warn('Some class offerings have missing class section data');
-      }
-      if (dataValidation.classOfferings.withValidSubject < dataValidation.classOfferings.total) {
-        console.warn('Some class offerings have missing subject data');
-      }
-    }
-
     return (
-      <div className="container mx-auto p-6">
+      <div className="p-4 sm:p-6 lg:p-8">
         <h1 className="text-2xl font-bold mb-6">Teaching Assignments</h1>
         <TeachingAssignmentsClient
-          assignments={assignments || []}
           classOfferings={classOfferings || []}
           teachers={teachers || []}
+          assignments={teachingAssignments || []}
           qualifications={qualifications || []}
-          schoolId={schoolData.id}
           dataValidation={dataValidation}
+          schoolId={school.id}
         />
       </div>
     );
   } catch (error) {
-    console.error('Error in TeachingAssignmentsPage:', error);
+    console.error('Error fetching data:', error);
     return (
-      <div className="container mx-auto p-6">
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <h2 className="text-red-800 font-semibold">Error Loading Assignments</h2>
-          <p className="text-red-600 mt-2">
-            There was an error loading the teaching assignments. Please try refreshing the page.
-          </p>
-          <pre className="mt-4 text-sm text-red-500 bg-red-50 p-2 rounded">
-            {error instanceof Error ? error.message : 'Unknown error'}
-          </pre>
-        </div>
+      <div className="p-8">
+        <h1 className="text-2xl font-bold mb-4">Error</h1>
+        <p>Failed to load teaching assignments. Please try again later.</p>
       </div>
     );
   }
-} 
+}

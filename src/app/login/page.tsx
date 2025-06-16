@@ -1,46 +1,64 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
-import { TextInput, PasswordInput, Button, Paper, Title, Container, Text, Anchor } from '@mantine/core';
-import { useForm } from '@mantine/form';
-import { toast } from 'sonner';
+import {
+  TextInput,
+  PasswordInput,
+  Paper,
+  Title,
+  Container,
+  Button,
+  Text,
+  Anchor,
+} from '@mantine/core';
 
 export default function LoginPage() {
   const router = useRouter();
   const supabase = createClient();
-  const [isLoading, setIsLoading] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const form = useForm({
-    initialValues: {
-      email: '',
-      password: '',
-    },
-    validate: {
-      email: (value) => (/^\S+@\S+$/.test(value) ? null : 'Invalid email'),
-      password: (value) => (value.length < 6 ? 'Password must be at least 6 characters' : null),
-    },
-  });
+  // Check for existing session
+  useEffect(() => {
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        router.replace('/admin/dashboard');
+      }
+    };
+    checkSession();
+  }, [router, supabase.auth]);
 
-  const handleSubmit = async (values: typeof form.values) => {
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+
     try {
-      setIsLoading(true);
-      const { error } = await supabase.auth.signInWithPassword({
-        email: values.email,
-        password: values.password,
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({
+        email: email.trim().toLowerCase(),
+        password: password
       });
 
-      if (error) {
-        throw error;
+      if (signInError) {
+        throw signInError;
       }
 
-      router.push('/admin/school-profile');
-      router.refresh();
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to sign in');
+      if (!data?.user) {
+        throw new Error('No user returned from login');
+      }
+
+      router.replace('/admin/dashboard');
+      
+    } catch (err) {
+      console.error('Login error:', err);
+      setError(err instanceof Error ? err.message : 'Failed to sign in');
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
@@ -50,32 +68,39 @@ export default function LoginPage() {
         Welcome back!
       </Title>
       <Text c="dimmed" size="sm" ta="center" mt={5}>
-        Do not have an account yet?{' '}
+        Don't have an account yet?{' '}
         <Anchor size="sm" component="button" onClick={() => router.push('/signup')}>
           Create account
         </Anchor>
       </Text>
 
       <Paper withBorder shadow="md" p={30} mt={30} radius="md">
-        <form onSubmit={form.onSubmit(handleSubmit)}>
+        <form onSubmit={handleLogin}>
           <TextInput
             label="Email"
             placeholder="you@example.com"
             required
-            {...form.getInputProps('email')}
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
           />
           <PasswordInput
             label="Password"
             placeholder="Your password"
             required
             mt="md"
-            {...form.getInputProps('password')}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
           />
-          <Button fullWidth mt="xl" type="submit" loading={isLoading}>
+          {error && (
+            <Text c="red" size="sm" mt="sm">
+              {error}
+            </Text>
+          )}
+          <Button type="submit" fullWidth mt="xl" loading={loading}>
             Sign in
           </Button>
         </form>
       </Paper>
     </Container>
   );
-} 
+}

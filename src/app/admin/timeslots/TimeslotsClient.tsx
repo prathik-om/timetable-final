@@ -1,6 +1,8 @@
 'use client';
 
-import { supabase } from '@/lib/supabaseClient';
+import React, { useMemo, useState } from 'react';
+import { IconPencil, IconTrash } from '@tabler/icons-react';
+import { toast, Toaster } from 'sonner';
 import {
   ActionIcon,
   Button,
@@ -19,9 +21,7 @@ import {
 import { TimeInput } from '@mantine/dates';
 import { useForm } from '@mantine/form';
 import { useDisclosure } from '@mantine/hooks';
-import { IconPencil, IconTrash } from '@tabler/icons-react';
-import React, { useMemo, useState } from 'react';
-import { Toaster, toast } from 'sonner';
+import { supabase } from '@/lib/supabaseClient';
 
 // Define the type for a single time slot based on your schema
 export type TimeSlot = {
@@ -276,7 +276,9 @@ export function TimeslotsClientComponent({
       <Modal opened={isAlertOpen} onClose={alertHandlers.close} title="Confirm Deletion">
         <Text>Are you sure you want to delete this time slot? This action cannot be undone.</Text>
         <Group justify="flex-end" mt="md">
-          <Button variant="default" onClick={alertHandlers.close}>Cancel</Button>
+          <Button variant="default" onClick={alertHandlers.close}>
+            Cancel
+          </Button>
           <Button color="red" onClick={confirmDelete}>
             Delete
           </Button>
@@ -284,4 +286,4 @@ export function TimeslotsClientComponent({
       </Modal>
     </Container>
   );
-} 
+}
